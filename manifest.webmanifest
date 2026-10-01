@@ -2,14 +2,15 @@
   "name": "稳态减脂",
   "short_name": "稳态减脂",
   "description": "个人饮食、训练、恢复与身体变化记录",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f5f7f4",
   "theme_color": "#f5f7f4",
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "/app-icon.svg",
+      "src": "app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

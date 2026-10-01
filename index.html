@@ -91,8 +91,9 @@
     <div class="modal-backdrop" id="auth-modal"><div class="modal small-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title"><div class="modal-header"><div><p class="eyebrow">PRIVATE CLOUD SYNC</p><h2 id="auth-modal-title">跨设备同步</h2></div><button class="icon-button" data-close-modal="auth-modal"><i data-lucide="x"></i></button></div><div id="auth-signed-out"><p class="auth-intro">使用邮箱登录。手机和电脑登录同一邮箱后，记录会自动同步；离线时仍会先保存在本机。</p><form id="auth-form"><label>邮箱地址<input name="email" type="email" autocomplete="email" required placeholder="name@example.com" /></label><button class="primary-button submit-button" type="submit"><i data-lucide="mail"></i>发送登录链接</button></form><p class="form-hint"><i data-lucide="shield-check"></i>只使用 Supabase 身份验证和你的私人数据表。</p></div><div id="auth-signed-in" class="hidden"><div class="account-card"><i data-lucide="cloud-check"></i><div><strong>云同步已开启</strong><span id="account-email"></span></div></div><button class="outline-button wide-button" id="sync-now" type="button"><i data-lucide="refresh-cw"></i>立即同步</button><button class="text-button danger-text" id="sign-out" type="button">退出登录</button></div></div></div>
     <div class="toast" id="toast"><i data-lucide="check-circle-2"></i><span>已保存</span></div>
     <script>
-      if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
     </script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

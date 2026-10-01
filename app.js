@@ -76,6 +76,7 @@ let supabaseClient = null;
 let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudSyncBusy = false;
+let appConfig = { visionEndpoint: '' };
 
 function loadState() {
   try {
@@ -152,10 +153,25 @@ function updateAuthModal() {
   if ($('#account-email')) $('#account-email').textContent = cloudUser?.email || '';
 }
 
+async function readAppConfig() {
+  const injected = window.__APP_CONFIG__ || {};
+  if (injected.supabaseUrl && injected.supabasePublishableKey) {
+    return { supabaseUrl: injected.supabaseUrl, supabasePublishableKey: injected.supabasePublishableKey, cloudSyncAvailable: true, visionEndpoint: injected.visionEndpoint || '' };
+  }
+  try {
+    const response = await fetch('api/config', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`config ${response.status}`);
+    const config = await response.json();
+    return { ...config, visionEndpoint: config.visionAvailable ? 'api/recognize-food' : '' };
+  } catch {
+    return { supabaseUrl: '', supabasePublishableKey: '', cloudSyncAvailable: false, visionEndpoint: '' };
+  }
+}
+
 async function initializeCloudSync() {
   try {
-    const response = await fetch('/api/config', { cache: 'no-store' });
-    const config = await response.json();
+    const config = await readAppConfig();
+    appConfig = config;
     if (!config.cloudSyncAvailable || !window.supabase?.createClient) {
       setSyncStatus('本地数据已保存', 'local');
       return;
@@ -195,7 +211,7 @@ function stopScanner() { if (scannerTimer) cancelAnimationFrame(scannerTimer); s
 function handleFoodPhoto(file) { if (!file) return; if (foodPhotoUrl) URL.revokeObjectURL(foodPhotoUrl); foodPhotoFile = file; foodPhotoUrl = URL.createObjectURL(file); $('#food-photo-preview').src = foodPhotoUrl; $('#photo-preview').classList.add('visible'); $('#vision-result')?.classList.remove('visible'); toast('照片已加载，可以开始识别'); }
 function ensureVisionControls() { if ($('#analyze-food-photo')) return; $('#photo-preview').insertAdjacentHTML('afterend', '<button type="button" class="analyze-photo-button" id="analyze-food-photo"><i data-lucide="sparkles"></i><span>识别食物与营养</span></button><div class="vision-result" id="vision-result"></div>'); }
 function showVisionResult(result) { const ingredients = (result.items || []).map(item => `${escapeHtml(item.name)} ${Math.round(item.estimated_grams || 0)}g`).join('、') || '未能清晰识别食材'; const confidence = Math.round(Number(result.confidence || 0) * 100); $('#vision-result').innerHTML = `<div class="vision-result-head"><span><i data-lucide="sparkles"></i>视觉估算 · 置信度 ${confidence}%</span><button type="button" id="apply-vision-result">使用此估算</button></div><strong>${escapeHtml(result.meal_name || '识别结果')}</strong><p>${ingredients}</p><div class="vision-macros"><span>${Math.round(result.calories || 0)}<small>kcal</small></span><span>P ${Number(result.protein || 0).toFixed(1)}g</span><span>C ${Number(result.carbs || 0).toFixed(1)}g</span><span>F ${Number(result.fat || 0).toFixed(1)}g</span></div><em>${escapeHtml(result.note || '请根据实际份量确认')}</em>`; $('#vision-result').dataset.result = JSON.stringify(result); $('#vision-result').classList.add('visible'); lucide.createIcons(); }
-async function analyzeFoodPhoto() { if (!foodPhotoFile) { toast('请先拍照或上传食物照片'); return; } const button = $('#analyze-food-photo'); button.disabled = true; button.classList.add('loading'); button.querySelector('span').textContent = '正在识别…'; try { const form = new FormData(); form.append('image', foodPhotoFile); const response = await fetch('/api/recognize-food', { method: 'POST', body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || '识别服务暂时不可用'); showVisionResult(result); toast('已生成营养估算，请确认后使用'); } catch (error) { toast(error.message || '识别失败，请稍后重试'); } finally { button.disabled = false; button.classList.remove('loading'); button.querySelector('span').textContent = '识别食物与营养'; } }
+async function analyzeFoodPhoto() { if (!foodPhotoFile) { toast('请先拍照或上传食物照片'); return; } const endpoint = appConfig.visionEndpoint; if (!endpoint) { toast('拍照识别尚未启用：静态部署还没有接入识别服务'); return; } const button = $('#analyze-food-photo'); button.disabled = true; button.classList.add('loading'); button.querySelector('span').textContent = '正在识别…'; try { const form = new FormData(); form.append('image', foodPhotoFile); const response = await fetch(endpoint, { method: 'POST', body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error || '识别服务暂时不可用'); showVisionResult(result); toast('已生成营养估算，请确认后使用'); } catch (error) { toast(error.message || '识别失败，请稍后重试'); } finally { button.disabled = false; button.classList.remove('loading'); button.querySelector('span').textContent = '识别食物与营养'; } }
 function applyVisionResult() { const raw = $('#vision-result').dataset.result; if (!raw) return; const result = JSON.parse(raw); setMealEntryMode('manual'); const form = $('#meal-form'); form.elements.name.value = result.meal_name || ''; form.elements.calories.value = Math.round(result.calories || 0); form.elements.protein.value = Number(result.protein || 0).toFixed(1); form.elements.carbs.value = Number(result.carbs || 0).toFixed(1); form.elements.fat.value = Number(result.fat || 0).toFixed(1); toast('已带入估算值，请核对后保存'); }
 function average(values) { return values.length ? values.reduce((sum, value) => sum + Number(value || 0), 0) / values.length : 0; }
 function rollingAverage(values, count) { return average(values.slice(-count)); }
